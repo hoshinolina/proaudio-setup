@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "proaudio-setup"
+dynamic = ["version"]
+description = 'Automatic low-latency professional audio setup'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Hoshino Lina", email = "lina@lina.yt" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "click",
+]
+
+[project.urls]
+Documentation = "https://github.com/hoshinolina/proaudio-setup#readme"
+Issues = "https://github.com/hoshinolina/proaudio-setup/issues"
+Source = "https://github.com/hoshinolina/proaudio-setup"
+
+[project.scripts]
+proaudio-setup = "proaudio_setup.cli:proaudio_setup"
+
+[tool.hatch.version]
+path = "proaudio_setup/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/proaudio_setup tests}"
+
+[tool.coverage.run]
+source_pkgs = ["proaudio_setup", "tests"]
+branch = true
+parallel = true
+omit = [
+  "proaudio_setup/__about__.py",
+]
+
+[tool.coverage.paths]
+proaudio_setup = ["proaudio_setup", "*/proaudio-setup/proaudio_setup"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]

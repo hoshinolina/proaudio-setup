@@ -18,7 +18,7 @@ All the files in support/ are templates. The packaging should replace `%PREFIX%`
 
 ### Automatic config on install/uninstall
 
-On installation, the packaging should call `proaudio-setup trigger postin`. This will perform systemwide configuration steps.
+On installation, the packaging should call `proaudio-setup trigger postin`. This will perform systemwide configuration steps. Note that this includes looking for the `SUDO_USER` (or `DOAS_USER`) and adding them to the `realtime` group, if it exists and a non-root user was found.
 
 On uninstallation, the packaging should call `proaudio-setup trigger preun`. This will undo `postin`.
 

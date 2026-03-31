@@ -403,6 +403,8 @@ class IRQManager:
                 comm = readfile(f"/proc/{pid}/comm")
             except:
                 continue
+            if not comm:
+                continue
 
             m = re.match(f"^irq/([0-9]+)-", comm)
             if m:

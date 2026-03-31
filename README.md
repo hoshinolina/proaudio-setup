@@ -4,6 +4,13 @@ Automatic system configuration for low-latency professional audio
 
 The goal of this project is to *automatically* (without explicit user configuration) set up the system to support low-latency audio, to make proaudio (studio/streaming) workflows more accessible to non-expert users.
 
+## Runing ad-hoc
+
+Clone the repo, make sure you have the `click` Python module, and run:
+
+    cd proaudio-setup
+    sudo python3 -m proaudio_setup check
+
 ## Packaging guide
 
 Ideally, this project should be packaged such that the only thing users have to do is to install the package, and that does all the required configuration automatically.

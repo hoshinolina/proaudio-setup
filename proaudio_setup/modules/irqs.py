@@ -427,7 +427,7 @@ class IRQManager:
     def load_devs(self, cls, kcls, filter=None):
         devs = set()
         if not os.path.exists(f"/sys/class/{kcls}"):
-            return
+            return []
         for dev in os.listdir(f"/sys/class/{kcls}"):
             path = f"/sys/class/{kcls}/{dev}"
             if os.path.realpath(path).startswith("/sys/devices/virtual/"):

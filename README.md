@@ -20,7 +20,7 @@ All the files in support/ are templates. The packaging should replace `%PREFIX%`
 
 On installation, the packaging should call `proaudio-setup trigger postin`. This will perform systemwide configuration steps.
 
-On uninstallation, the packaging should call `proaudio-setup trigger postun`. This will undo `postin`.
+On uninstallation, the packaging should call `proaudio-setup trigger preun`. This will undo `postin`.
 
 The packaging should, if possible, automatically enable the systemd unit for the user, and direct them to reboot to apply the changes.
 

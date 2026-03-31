@@ -124,8 +124,8 @@ def postin():
         fix(f"Reboot your system to apply the changes.")
 
 @trigger.command()
-def postun():
-    """Trigger post-uninstall actions"""
+def preun():
+    """Trigger pre-uninstall actions"""
     lock()
     rets = run_modules("unconfigure")
     if "reboot" in rets:

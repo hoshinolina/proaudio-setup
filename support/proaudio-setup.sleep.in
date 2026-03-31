@@ -1,0 +1,10 @@
+#!/bin/sh
+
+case $1/$2 in
+  post/*)
+    logger -t proaudio-setup "Waking up from $2..."
+    %PREFIX%/bin/proaudio-setup trigger wake
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,14 @@
+[Unit]
+Description=Proaudio system tuning
+# Together with RemainAfterExit, this ensures that this unit is restarted
+# when irqbalance restarts.
+PartOf=irqbalance.service
+After=irqbalance.service
+
+[Service]
+Type=oneshot
+ExecStart=%PREFIX%/bin/proaudio-setup trigger boot
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

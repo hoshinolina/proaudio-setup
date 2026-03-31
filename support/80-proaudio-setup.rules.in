@@ -1,0 +1,4 @@
+# Adjust realtime IRQ priority when audio devices come and go
+KERNEL=="pcmC[0-9]*", RUN+="%PREFIX%/bin/proaudio-setup trigger udev"
+# Also watch video devices, since they demote paired audio devices to semi-realtime
+KERNEL=="video[0-9]*", RUN+="%PREFIX%/bin/proaudio-setup trigger udev"

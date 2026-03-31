@@ -1,4 +1,4 @@
-import sys, re, subprocess, os, logging
+import sys, re, subprocess, os, logging, syslog
 import click
 
 def cmd(*c, default=None, check=True):
@@ -73,9 +73,18 @@ def writefile(f, v):
     with open(f, "w") as fd:
         fd.write(v)
 
+_do_syslog = False
+
+def enable_syslog():
+    global _do_syslog
+    _do_syslog = True
+    logging.getLogger().addHandler(logging.handlers.SysLogHandler())
+
 def msg(s=""):
     s = autofmt(s)
-    click.echo("  " * _indent + s)
+    click.echo("  " * _indent + s, err=True)
+    if _do_syslog:
+        syslog.syslog("  " * _indent + s)
 
 def hdr(s=""):
     global _indent

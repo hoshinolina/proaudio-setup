@@ -674,7 +674,7 @@ def check():
 #
 #     return changed
 
-def apply():
+def apply(nosvc=False):
     changed = False
 
     if irqm.rt_pri is not None:
@@ -685,10 +685,11 @@ def apply():
                 writefile("/proc/irq/default_smp_affinity", irqm.nonrt_cores.hex())
                 changed = True
 
-        irqbalance = cmd("systemctl", "is-active", "irqbalance", check=False, default=None)
+        if not nosvc:
+            irqbalance = cmd("systemctl", "is-active", "irqbalance", check=False, default=None)
 
-        if irqbalance == "active" and irqm.apply_irqbalance():
-            changed = True
+            if irqbalance == "active" and irqm.apply_irqbalance():
+                changed = True
 
         if irqm.apply_affinity():
             changed = True

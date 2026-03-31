@@ -1,18 +1,36 @@
 # SPDX-FileCopyrightText: 2026-present Hoshino Lina <lina@lina.yt>
 #
 # SPDX-License-Identifier: MIT
-import logging
+import logging, logging.handlers
 logging.basicConfig(level=logging.DEBUG)
 
-import click
+import click, fcntl
 
 from proaudio_setup.__about__ import __version__
 from proaudio_setup import ALL_MODULES
 from proaudio_setup.utils import *
 
 logging.getLogger().setLevel(logging.INFO)
+log = logging.getLogger("cli")
 
-def run_modules(command):
+def lock():
+    if not root:
+        err("This command must be run as root")
+        fix(f"Try running `sudo {argvall}` instead.")
+        sys.exit(1)
+
+    LOCKFILE = "/run/lock/proaudio-setup.lock"
+
+    global lockfd
+    try:
+        lockfd = open(LOCKFILE, "w")
+    except:
+        log.warn(f"Failed to open lockfile {LOCKFILE}")
+        return
+
+    fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+
+def run_modules(command, *args, **kwargs):
     rets = []
     for mod in ALL_MODULES:
         fn = getattr(mod, "init", None)
@@ -21,7 +39,7 @@ def run_modules(command):
         popall()
         fn = getattr(mod, command, None)
         if fn:
-            rets.append(fn())
+            rets.append(fn(*args, **kwargs))
         popall()
     return rets
 
@@ -51,8 +69,9 @@ def check():
 
 @proaudio_setup.command()
 def configure():
-    click.echo("Configuring system for proaudio...")
     """Configure persistent system settings"""
+    lock()
+    click.echo("Configuring system for proaudio...")
     rets = run_modules("configure")
     rets += run_modules("apply")
     if "reboot" in rets:
@@ -67,8 +86,9 @@ def configure():
 
 @proaudio_setup.command()
 def unconfigure():
-    click.echo("Unconfiguring system for proaudio...")
     """Unconfigure persistent system settings"""
+    lock()
+    click.echo("Unconfiguring system for proaudio...")
     rets = run_modules("unconfigure")
     if "reboot" in rets:
         msg()
@@ -78,11 +98,55 @@ def unconfigure():
 
 @proaudio_setup.command()
 def apply():
-    click.echo("Applying runtime settings...")
     """Apply runtime settings on startup, resume, or hotplug"""
+    lock()
+    click.echo("Applying runtime settings...")
     rets = run_modules("apply")
     if any(rets):
         msg()
         msg("Changes applied.")
     else:
         msg("No changes needed.")
+
+@proaudio_setup.group()
+def trigger():
+    pass
+
+trigger.hidden = True
+
+@trigger.command()
+def postin():
+    """Trigger post-install actions"""
+    lock()
+    rets = run_modules("configure")
+    if "reboot" in rets:
+        msg()
+        fix(f"Reboot your system to apply the changes.")
+
+@trigger.command()
+def postun():
+    """Trigger post-uninstall actions"""
+    lock()
+    rets = run_modules("unconfigure")
+    if "reboot" in rets:
+        msg()
+        fix(f"Reboot your system to apply the changes.")
+
+@trigger.command()
+def udev():
+    """Trigger device add/remove actions"""
+    lock()
+    enable_syslog()
+    run_modules("apply")
+
+@trigger.command()
+def boot():
+    """Trigger boot actions"""
+    lock()
+    run_modules("apply")
+
+@trigger.command()
+def wake():
+    """Trigger wake from sleep actions"""
+    lock()
+    run_modules("apply", nosvc=True)

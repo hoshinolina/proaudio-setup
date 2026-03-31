@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: MIT
 
-from .modules import irqs, kernel
+from .modules import irqs, kernel, user
 
 ALL_MODULES = [
     kernel,
-    irqs
+    irqs,
+    user,
 ]

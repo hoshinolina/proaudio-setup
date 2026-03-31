@@ -126,8 +126,8 @@ def bad(s, t=None):
     _ilist = _indent
     _indent += 1
 
-def info(s):
-    msg(click.style(f"Info: {s}", underline=True))
+def info(s, t=None):
+    msg("ℹ️ " + click.style(s, bold=True) + (f" {t}" if t else ""))
 
 def warn(s):
     msg(click.style(f"Warning: {s}", fg="yellow", bold=True))

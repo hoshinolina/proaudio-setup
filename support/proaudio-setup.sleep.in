@@ -1,5 +1,27 @@
 #!/bin/sh
 
+# This file sets up proaudio-setup to run on resume, as
+# suspend/resume cycles lose the kernel IRQ SMP affinity
+# configuration. It should be placed in
+# /lib/systemd/system-sleep/.
+#
+# Although the systemd-sleep manpage documents this
+# directory as "for local use" / "hacks", there's a
+# good reason to do it this way over a unit interacting
+# with sleep.target. This script runs with the user
+# slice frozen, which means that it can restore IRQ
+# config *before* something like PipeWire wakes up
+# after resume and starts using the audio device again.
+# This closes a race that could end up with dropouts
+# on resume. Why would a few xruns on resume matter
+# anyway? What if I told you the kernel drivers have
+# bugs that mean a single IRQ latency spike can cause a
+# dropout *without* an xrun, and thereafter end up with
+# increased audio latency (silently, without userspace
+# knowing) and, on some devices, even cause persistent
+# audio corruption until the next device reset or
+# "proper" xrun? Yeah, it's a mess...
+
 case $1/$2 in
   post/*)
     logger -t proaudio-setup "Waking up from $2..."

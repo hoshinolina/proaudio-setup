@@ -9,6 +9,9 @@ PRIO_RTSEC = 70
 
 class IRQBalance:
     def __new__(cls):
+        if not root:
+            return None
+
         path = "/run/irqbalance"
         socks = os.listdir(path)
         if len(socks) == 1:
@@ -339,6 +342,7 @@ class IRQManager:
         self.audio_devs = self.load_devs(AudioCard, "sound", is_audio)
         self.video_devs = self.load_devs(Device, "video4linux")
         self.assign_irqs()
+        self.assign_cpus()
 
     def load_cpus(self):
         self.all_cpus = CPUSet.all()
@@ -352,18 +356,21 @@ class IRQManager:
 
         self.rt_candidates = sorted(self.thread0_cpus, key=lambda c: c.capacity)
 
-        if len(self.rt_candidates) >= 4:
+    def assign_cpus(self):
+        self.manage_cpus = True
+        if len(self.rt_candidates) >= 4 and self.pri_irqs and self.sec_irqs:
             self.rt_pri = CPUSet([self.rt_candidates[-1]])
             self.rt_sec = CPUSet([self.rt_candidates[-2]])
             self.rt_cpus = self.rt_pri | self.rt_sec
             log.info(f"Realtime CPUs: {self.rt_pri} / {self.rt_sec}")
-        elif len(self.rt_candidates) >= 2:
+        elif len(self.rt_candidates) >= 2 and (self.pri_irqs or self.sec_irqs):
             self.rt_cpus = self.rt_pri = self.rt_sec = CPUSet([self.rt_candidates[-1]])
             log.info(f"Realtime CPU: {self.rt_pri}")
         else:
-            self.rt_pri = self.rt_sec = None
-            self.rt_cpus = CPUSet()
-            log.info(f"Not enough CPUs for realtime")
+            self.rt_pri = self.rt_sec = self.rt_cpus = CPUSet()
+            if self.pri_irqs or self.sec_irqs:
+                log.info(f"Not enough CPUs for realtime")
+                self.manage_cpus = False
 
         # Add in the threads
         self.rt_cpus = CPUSet(i for i in self.online_cpus if i.thread_siblings & self.rt_cpus)
@@ -391,12 +398,18 @@ class IRQManager:
                 pid = int(pid)
             except ValueError:
                 continue
+
+            PF_KTHREAD = 0x00200000
+
             try:
-                os.readlink(f"/proc/{pid}/exe")
-            except FileNotFoundError:
-                # Check kernel threads only
+                stat = readfile(f"/proc/{pid}/stat")
+            except:
                 pass
-            else:
+            if not stat:
+                continue
+            stat = stat.split()
+            flags = int(stat[8])
+            if not (flags & PF_KTHREAD):
                 continue
 
             try:
@@ -443,7 +456,11 @@ class IRQManager:
         self.pri_irqs = set()
         self.sec_irqs = set()
         for dev in self.audio_devs:
-            shared_video = set(d for d in self.video_devs if dev.irqs & d.irqs)
+            if not dev.irqs:
+                log.info(f"Audio device {dev} has no IRQs?")
+                continue
+
+            shared_video = set(d for d in self.video_devs if dev.irqs and dev.irqs & d.irqs)
             if shared_video:
                 self.sec_irqs |= dev.irqs
             else:
@@ -453,6 +470,9 @@ class IRQManager:
 
     def check_irqs(self):
         for dev in sorted(self.audio_devs, key=lambda c: c.number):
+            if not dev.irqs:
+                unk(f"Cannot find IRQ for audio device {dev.number} `{dev.name}`")
+                continue
             sirq = ",".join(map(str,dev.irqs))
             if dev.irqs & self.sec_irqs:
                 if not dev.is_usbvideo:
@@ -537,7 +557,7 @@ class IRQManager:
 
         banned_irqs = irqbalance.get_banned_irqs()
         if banned_irqs >= (self.pri_irqs | self.sec_irqs):
-            ok(f"IRQ balancing bans real-time IRQs", f"[*{",".join(map(str, banned_irqs))}*]")
+            ok(f"IRQ balancing bans real-time IRQs", f"[*{",".join(map(str, banned_irqs)) or "-"}*]")
         else:
             bad("IRQ balancing does not ban real-time IRQs", f"[*{",".join(map(str, banned_irqs)) or "-"}*]")
             fix(f"Automatically fixable")
@@ -570,7 +590,7 @@ class IRQManager:
             want_prio = PRIO_RTPRI if i in self.pri_irqs else PRIO_RTSEC
             semi = "" if i in self.pri_irqs else "semi-"
             if i not in self.irqthreads:
-                unk(f"Thread for {semi}real-time IRQ *{i.n}* not found")
+                unk(f"Thread for {semi}real-time IRQ *{i}* not found")
                 continue
             for pid, comm in self.irqthreads[i].items():
                 param = os.sched_getparam(pid)
@@ -612,7 +632,7 @@ def check():
 
     irqm.check_irqs()
 
-    if irqm.rt_pri is None:
+    if not irqm.manage_cpus:
         alert("Not enough CPUs to isolate realtime IRQs")
     else:
         default_smp_affinity = readfile("/proc/irq/default_smp_affinity")
@@ -679,7 +699,7 @@ def check():
 def apply(nosvc=False):
     changed = False
 
-    if irqm.rt_pri is not None:
+    if irqm.manage_cpus:
         default_smp_affinity = readfile("/proc/irq/default_smp_affinity")
         if default_smp_affinity is not None:
             if CPUSet(default_smp_affinity) != irqm.nonrt_cores:
